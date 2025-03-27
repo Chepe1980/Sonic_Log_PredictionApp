@@ -6,7 +6,6 @@ import seaborn as sns
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score
-import time  # For simulating processing delays
 
 # =============================================
 # STREAMLIT APP CONFIGURATION
@@ -29,34 +28,22 @@ uploaded_file = st.sidebar.file_uploader("Choose a CSV file", type=".csv")
 
 if uploaded_file:
     processing_log.text("⏳ Loading CSV file...")
-    try:
-        # Load CSV file
-        df = pd.read_csv(uploaded_file)
-        processing_log.text("✅ CSV file loaded successfully!")
+    df = pd.read_csv(uploaded_file)
+    processing_log.text("✅ CSV file loaded successfully!")
 
-        # Check required columns
-        required_columns = ['GR', 'RT', 'PHIE', 'NPHI', 'VCL', 'RHOBMOD', 'SW', 'DT', 'DTSM', 'DEPTH']
-        for col in required_columns:
-            if col not in df.columns:
-                raise ValueError(f"Missing required column: {col}")
+    # Define features and target
+    features = ['GR', 'RT', 'PHIE', 'NPHI', 'VCL', 'RHOBMOD', 'SW', 'DT']
+    target = 'DTSM'
+    
+    # Clean data
+    processing_log.text("🧹 Cleaning data (removing NaN values)...")
+    df = df.dropna(subset=features + [target])
+    processing_log.text(f"📊 Data cleaned! Shape: {df.shape}")
 
-        # Define features and target
-        features = ['GR', 'RT', 'PHIE', 'NPHI', 'VCL', 'RHOBMOD', 'SW', 'DT']
-        target = 'DTSM'
-        
-        # Clean data
-        processing_log.text("🧹 Cleaning data (removing NaN values)...")
-        df = df.dropna(subset=features + [target])
-        processing_log.text(f"📊 Data cleaned! Shape: {df.shape}")
-
-        # Show raw data preview
-        if st.sidebar.checkbox("Show Raw Data"):
-            st.subheader("Raw Data Preview")
-            st.dataframe(df.head())
-
-    except Exception as e:
-        processing_log.text(f"❌ Error loading CSV file: {e}")
-        st.error(f"Failed to load CSV file. Please check the file format and columns. Error: {e}")
+    # Show raw data preview
+    if st.sidebar.checkbox("Show Raw Data"):
+        st.subheader("Raw Data Preview")
+        st.dataframe(df.head())
 
 # =============================================
 # 2. MODEL TRAINING & PREDICTION (ACTION BUTTON)
@@ -121,10 +108,19 @@ if uploaded_file and st.sidebar.button("Run Model"):
     
     with tab2:
         processing_log.text("📈 Rendering Real vs Predicted Scatter Plot...")
+        
+        # Ensure colors are selected from the same subset as y_test
+        colors = df.loc[y_test.index, 'SW']  # This ensures colors match y_test's indices
+        
         fig2 = plt.figure(figsize=(10, 8))
-        colors = df['SW']
+        
+        # Create scatter plot
         sc = plt.scatter(y_test, y_pred, c=colors, cmap='jet_r', alpha=0.6)
+        
+        # Add colorbar
         plt.colorbar(sc, label='SW (Water Saturation)')
+        
+        # Plot real vs predicted
         plt.plot([min(y_test), max(y_test)], [min(y_test), max(y_test)], 'r--')
         plt.xlabel('Real DTSM (us/ft)')
         plt.ylabel('Predicted DTSM (us/ft)')
@@ -165,42 +161,15 @@ if uploaded_file and st.sidebar.button("Run Model"):
     # =============================================
     st.sidebar.subheader("Export Results")
     if st.sidebar.button("Export Predicted CSV"):
-        try:
-            processing_log.text("💾 Exporting predicted CSV file...")
-            
-            # Ensure the 'DTSM' and 'DTSM_PRED' columns are available
-            if 'DTSM' not in df.columns or 'DTSM_PRED' not in df.columns:
-                raise ValueError("Required columns 'DTSM' or 'DTSM_PRED' are missing from the dataframe.")
-            
-            # Create a new dataframe with the predicted DTSM
-            df_export = df[['DEPTH', 'DTSM', 'DTSM_PRED']]
-            
-            # Ensure the dataframe has the correct structure before exporting
-            if df_export.empty:
-                raise ValueError("Dataframe to export is empty. Please check if the predictions were generated correctly.")
-            
-            # Save the CSV file to disk or in a temporary buffer
-            output_file = 'predicted_dtsm.csv'
-            df_export.to_csv(output_file, index=False)
-            
-            # Confirm success
-            processing_log.text(f"✅ File exported successfully as: `{output_file}`")
-            st.sidebar.success(f"✅ File exported successfully as: `{output_file}`")
+        processing_log.text("💾 Exporting predicted CSV file...")
         
-        except Exception as e:
-            processing_log.text(f"❌ Error during CSV export: {e}")
-            st.error(f"An error occurred while exporting the CSV file: {e}")
-    
-    # Adding a download button for the CSV
-    if 'predicted_dtsm.csv' in locals():
-        with open(output_file, 'rb') as f:
-            st.download_button(
-                label="Download Predicted DTSM CSV",
-                data=f,
-                file_name='predicted_dtsm.csv',
-                mime="text/csv"
-            )
+        # Save dataframe with predicted results to a new CSV file
+        output_file = 'DTSM_PREDICTED.csv'
+        df.to_csv(output_file, index=False)
+        processing_log.text(f"✅ File exported as: `{output_file}`")
+        st.sidebar.success(f"✅ File exported as: `{output_file}`")
 
 # Clear processing log if no action is taken
 if not uploaded_file:
     processing_log.text("ℹ️ Upload a CSV file to begin processing.")
+
