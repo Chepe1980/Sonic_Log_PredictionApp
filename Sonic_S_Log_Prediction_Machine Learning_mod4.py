@@ -45,6 +45,9 @@ if uploaded_file:
         st.subheader("Raw Data Preview")
         st.dataframe(df.head())
 
+    # Create DTSM bins for visualization (ensure it's categorical)
+    df['DTSM_BINNED'] = pd.cut(df[target], bins=3, labels=['Low', 'Medium', 'High'])
+
 # =============================================
 # 2. MODEL TRAINING & PREDICTION (ACTION BUTTON)
 # =============================================
@@ -94,7 +97,7 @@ if uploaded_file and st.sidebar.button("Run Model"):
         sns.pairplot(
             df,
             vars=features,
-            hue='DTSM',
+            hue='DTSM_BINNED',  # Use binned DTSM for coloring
             palette='viridis',
             diag_kind='kde',
             plot_kws={'alpha': 0.6, 's': 20},
@@ -150,7 +153,7 @@ if uploaded_file and st.sidebar.button("Run Model"):
         output_file = "predicted_dtsm.csv"
         df.to_csv(output_file, index=False)
         
-        # Create download button
+        # Use the `st.download_button` to prompt download
         with open(output_file, "rb") as file:
             st.download_button(
                 label="Download Predicted DTSM CSV",
@@ -160,4 +163,5 @@ if uploaded_file and st.sidebar.button("Run Model"):
             )
 
         processing_log.text(f"✅ File ready for download: `{output_file}`")
+
 
