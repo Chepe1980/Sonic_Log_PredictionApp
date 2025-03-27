@@ -6,6 +6,8 @@ import seaborn as sns
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score
+import lasio
+import io
 
 # =============================================
 # STREAMLIT APP CONFIGURATION
@@ -94,6 +96,8 @@ if uploaded_file and st.sidebar.button("Run Model"):
     
     with tab1:
         processing_log.text("🖌️ Rendering Pairplot...")
+        
+        # Create the pairplot with seaborn, and wrap it in a matplotlib figure for Streamlit
         fig1 = plt.figure(figsize=(10, 8))
         sns.pairplot(
             df,
@@ -104,8 +108,13 @@ if uploaded_file and st.sidebar.button("Run Model"):
             plot_kws={'alpha': 0.6, 's': 20},
             corner=True
         )
+        
+        # Display the plot in Streamlit
         st.pyplot(fig1)
+        
+        # Close the figure to prevent display issues with subsequent plots
         plt.close(fig1)
+    
     with tab2:
         processing_log.text("📈 Rendering Real vs Predicted Scatter Plot...")
         
@@ -155,7 +164,7 @@ if uploaded_file and st.sidebar.button("Run Model"):
         st.pyplot(fig4)
     
     processing_log.text("✅ All visualizations generated successfully!")
-    
+
     # =============================================
     # 4. EXPORT PREDICTED CSV (ACTION BUTTON)
     # =============================================
@@ -163,13 +172,24 @@ if uploaded_file and st.sidebar.button("Run Model"):
     if st.sidebar.button("Export Predicted CSV"):
         processing_log.text("💾 Exporting predicted CSV file...")
         
-        # Save dataframe with predicted results to a new CSV file
-        output_file = 'DTSM_PREDICTED.csv'
-        df.to_csv(output_file, index=False)
-        processing_log.text(f"✅ File exported as: `{output_file}`")
-        st.sidebar.success(f"✅ File exported as: `{output_file}`")
+        # Create CSV from the dataframe with the predictions
+        csv = df.to_csv(index=False)
+        
+        # Let the user know that the file is ready for download
+        st.sidebar.success(f"✅ File ready for download: `predicted_dtsm.csv`")
+        
+        # Provide download button for the CSV file
+        st.download_button(
+            label="Download Predicted CSV File",
+            data=csv,
+            file_name='predicted_dtsm.csv',
+            mime='text/csv'
+        )
+        
+        processing_log.text(f"✅ CSV file (`predicted_dtsm.csv`) is ready for download!")
 
 # Clear processing log if no action is taken
 if not uploaded_file:
     processing_log.text("ℹ️ Upload a CSV file to begin processing.")
+
 
