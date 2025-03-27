@@ -34,7 +34,7 @@ if uploaded_file:
         processing_log.text("⏳ Loading LAS file...")
         
         # Read the file from the uploaded BytesIO object
-        las = lasio.read(io.BytesIO(uploaded_file.read()))  # Wrap in BytesIO
+        las = lasio.read(io.BytesIO(uploaded_file.read()))  # Wrap in BytesIO to convert the file content to binary
         df = las.df().reset_index()
         
         processing_log.text("✅ LAS file loaded successfully!")
@@ -201,3 +201,4 @@ if st.sidebar.button("Export Predicted LAS"):
 # Clear processing log if no action is taken
 if not uploaded_file:
     processing_log.text("ℹ️ Upload a LAS file to begin processing.")
+
