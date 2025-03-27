@@ -6,8 +6,6 @@ import seaborn as sns
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score
-import lasio
-import io
 
 # =============================================
 # STREAMLIT APP CONFIGURATION
@@ -78,10 +76,6 @@ if uploaded_file and st.sidebar.button("Run Model"):
     st.write(f"**Mean Squared Error (MSE):** `{mse:.2f}`")
     st.write(f"**R² Score:** `{r2:.4f}`")
     
-    # Create DTSM bins for visualization
-    processing_log.text("📊 Creating DTSM bins for visualization...")
-    df['DTSM_BINNED'] = pd.cut(df[target], bins=3, labels=['Low', 'Medium', 'High'])
-    
     # =============================================
     # 3. VISUALIZATIONS (TABS)
     # =============================================
@@ -96,40 +90,22 @@ if uploaded_file and st.sidebar.button("Run Model"):
     
     with tab1:
         processing_log.text("🖌️ Rendering Pairplot...")
-        
-        # Create the pairplot with seaborn, and wrap it in a matplotlib figure for Streamlit
         fig1 = plt.figure(figsize=(10, 8))
         sns.pairplot(
             df,
             vars=features,
-            hue='DTSM_BINNED',
+            hue='DTSM',
             palette='viridis',
             diag_kind='kde',
             plot_kws={'alpha': 0.6, 's': 20},
             corner=True
         )
-        
-        # Display the plot in Streamlit
         st.pyplot(fig1)
-        
-        # Close the figure to prevent display issues with subsequent plots
-        plt.close(fig1)
     
     with tab2:
         processing_log.text("📈 Rendering Real vs Predicted Scatter Plot...")
-        
-        # Ensure colors are selected from the same subset as y_test
-        colors = df.loc[y_test.index, 'SW']  # This ensures colors match y_test's indices
-        
         fig2 = plt.figure(figsize=(10, 8))
-        
-        # Create scatter plot
-        sc = plt.scatter(y_test, y_pred, c=colors, cmap='jet_r', alpha=0.6)
-        
-        # Add colorbar
-        plt.colorbar(sc, label='SW (Water Saturation)')
-        
-        # Plot real vs predicted
+        plt.scatter(y_test, y_pred, alpha=0.6)
         plt.plot([min(y_test), max(y_test)], [min(y_test), max(y_test)], 'r--')
         plt.xlabel('Real DTSM (us/ft)')
         plt.ylabel('Predicted DTSM (us/ft)')
@@ -169,21 +145,19 @@ if uploaded_file and st.sidebar.button("Run Model"):
     # 4. EXPORT PREDICTED CSV (ACTION BUTTON)
     # =============================================
     st.sidebar.subheader("Export Results")
-    if st.sidebar.button("Export Predicted CSV"):
-        processing_log.text("💾 Exporting predicted CSV file...")
+    if st.sidebar.button("Download Predicted CSV"):
+        # Save DataFrame to CSV
+        output_file = "predicted_dtsm.csv"
+        df.to_csv(output_file, index=False)
         
-        # Create CSV from the dataframe with the predictions
-        csv = df.to_csv(index=False)
-        st.sidebar.success(f"✅ File ready for download: `predicted_dtsm.csv`")
-        
-        # Provide download button for the CSV file
-        st.download_button(
-            label="Download Predicted CSV File",
-            data=csv,
-            file_name='predicted_dtsm.csv',
-            mime='text/csv'
-        )
+        # Create download button
+        with open(output_file, "rb") as file:
+            st.download_button(
+                label="Download Predicted DTSM CSV",
+                data=file,
+                file_name=output_file,
+                mime="text/csv"
+            )
 
-# Clear processing log if no action is taken
-if not uploaded_file:
-    processing_log.text("ℹ️ Upload a CSV file to begin processing.")
+        processing_log.text(f"✅ File ready for download: `{output_file}`")
+
