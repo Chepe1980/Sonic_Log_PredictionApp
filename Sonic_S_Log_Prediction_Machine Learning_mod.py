@@ -6,7 +6,6 @@ import seaborn as sns
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score
-import lasio
 import io  # For handling BytesIO
 import time  # For simulating processing delays
 
@@ -17,7 +16,7 @@ st.set_page_config(layout="wide")
 st.title("DTSM Prediction from Well Logs 🛢️📊")
 st.markdown("""
 This app predicts **Shear Sonic (DTSM)** from well log data using a **Random Forest Regressor**.
-Upload a LAS file, run the model, and export predictions.
+Upload a CSV file, run the model, and export predictions.
 """)
 
 # Initialize a text box for processing comments
@@ -26,43 +25,41 @@ processing_log = st.empty()  # Placeholder for live updates
 # =============================================
 # 1. FILE UPLOAD SECTION
 # =============================================
-st.sidebar.header("Upload LAS File")
-uploaded_file = st.sidebar.file_uploader("Choose a LAS file", type=".las")
+st.sidebar.header("Upload CSV File")
+uploaded_file = st.sidebar.file_uploader("Choose a CSV file", type=".csv")
 
 if uploaded_file:
     try:
-        processing_log.text("⏳ Loading LAS file...")
+        processing_log.text("⏳ Loading CSV file...")
         
-        # Read the file content from uploaded file
-        las_file_content = uploaded_file.read()
+        # Read the CSV file into a pandas dataframe
+        df = pd.read_csv(uploaded_file)
         
-        # Check if the file content starts with the expected LAS header (~)
-        if not las_file_content.startswith(b'~'):
-            raise ValueError("The uploaded file does not appear to be a valid LAS file.")
+        # Display the first few rows to verify the data structure
+        processing_log.text("✅ CSV file loaded successfully!")
+        
+        # Show raw data preview
+        if st.sidebar.checkbox("Show Raw Data"):
+            st.subheader("Raw Data Preview")
+            st.dataframe(df.head())
+        
+        # Check if necessary columns exist in the dataframe
+        required_columns = ['GR', 'RT', 'PHIE', 'NPHI', 'VCL', 'RHOBMOD', 'SW', 'DT', 'DTSM']
+        if not all(col in df.columns for col in required_columns):
+            raise ValueError(f"The CSV file is missing one or more required columns: {', '.join(required_columns)}")
 
-        # Read the LAS file using lasio
-        las = lasio.read(io.BytesIO(las_file_content))  # Wrap in BytesIO to convert the file content to binary
-        df = las.df().reset_index()
-        
-        processing_log.text("✅ LAS file loaded successfully!")
+        # Clean data
+        processing_log.text("🧹 Cleaning data (removing NaN values)...")
+        df = df.dropna(subset=required_columns)
+        processing_log.text(f"📊 Data cleaned! Shape: {df.shape}")
 
         # Define features and target
         features = ['GR', 'RT', 'PHIE', 'NPHI', 'VCL', 'RHOBMOD', 'SW', 'DT']
         target = 'DTSM'
         
-        # Clean data
-        processing_log.text("🧹 Cleaning data (removing NaN values)...")
-        df = df.dropna(subset=features + [target])
-        processing_log.text(f"📊 Data cleaned! Shape: {df.shape}")
-
-        # Show raw data preview
-        if st.sidebar.checkbox("Show Raw Data"):
-            st.subheader("Raw Data Preview")
-            st.dataframe(df.head())
-
     except Exception as e:
-        processing_log.text(f"❌ Error loading LAS file: {e}")
-        st.error(f"Failed to load LAS file. Please check the file format. Error: {e}")
+        processing_log.text(f"❌ Error loading CSV file: {e}")
+        st.error(f"Failed to load CSV file. Please check the file format. Error: {e}")
 
 # =============================================
 # 2. MODEL TRAINING & PREDICTION (ACTION BUTTON)
@@ -172,41 +169,29 @@ if uploaded_file and st.sidebar.button("Run Model"):
         st.error("An error occurred during model training or prediction.")
 
 # =============================================
-# 4. EXPORT PREDICTED LAS (ACTION BUTTON)
+# 4. EXPORT PREDICTED CSV (ACTION BUTTON)
 # =============================================
 st.sidebar.subheader("Export Results")
-if st.sidebar.button("Export Predicted LAS"):
+if st.sidebar.button("Export Predicted CSV"):
     try:
-        processing_log.text("💾 Exporting predicted LAS file...")
-        new_las = lasio.LASFile()
+        processing_log.text("💾 Exporting predicted CSV file...")
         
-        # Copy header information
-        for curve in las.curves:
-            new_las.append_curve(
-                curve.mnemonic,
-                data=curve.data,
-                unit=curve.unit,
-                descr=curve.descr,
-                value=curve.value
-            )
+        # Create a new dataframe with the predicted DTSM
+        df_export = df[['DEPTH', 'DTSM', 'DTSM_PRED']]
         
-        # Add curves
-        new_las.append_curve('DEPTH', df['DEPTH'].values, unit='m')
-        new_las.append_curve('DTSM', df[target].values, unit='us/ft', descr='Measured Shear Sonic')
-        new_las.append_curve('DTSM_PRED', df['DTSM_PRED'].values, unit='us/ft', descr='Predicted Shear Sonic')
+        # Export the dataframe as CSV
+        output_file = 'predicted_dtsm.csv'
+        df_export.to_csv(output_file, index=False)
         
-        # Save LAS file
-        output_file = 'EJEM1_PREDICTED_DTSM.las'
-        new_las.write(output_file)
         processing_log.text(f"✅ File exported as: `{output_file}`")
         st.sidebar.success(f"✅ File exported as: `{output_file}`")
     
     except Exception as e:
-        processing_log.text(f"❌ Error during LAS export: {e}")
-        st.error("An error occurred while exporting the LAS file.")
+        processing_log.text(f"❌ Error during CSV export: {e}")
+        st.error("An error occurred while exporting the CSV file.")
 
 # Clear processing log if no action is taken
 if not uploaded_file:
-    processing_log.text("ℹ️ Upload a LAS file to begin processing.")
+    processing_log.text("ℹ️ Upload a CSV file to begin processing.")
 
 
