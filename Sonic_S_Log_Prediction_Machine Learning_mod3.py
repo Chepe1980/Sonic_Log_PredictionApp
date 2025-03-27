@@ -105,7 +105,7 @@ if uploaded_file and st.sidebar.button("Run Model"):
             corner=True
         )
         st.pyplot(fig1)
-    
+        plt.close(fig1)
     with tab2:
         processing_log.text("📈 Rendering Real vs Predicted Scatter Plot...")
         
