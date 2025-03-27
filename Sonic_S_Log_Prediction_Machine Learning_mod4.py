@@ -164,46 +164,25 @@ if uploaded_file and st.sidebar.button("Run Model"):
         st.pyplot(fig4)
     
     processing_log.text("✅ All visualizations generated successfully!")
-    
+
     # =============================================
-    # 4. EXPORT PREDICTED LAS (ACTION BUTTON)
+    # 4. EXPORT PREDICTED CSV (ACTION BUTTON)
     # =============================================
     st.sidebar.subheader("Export Results")
-    if st.sidebar.button("Export Predicted LAS"):
-        processing_log.text("💾 Exporting predicted LAS file...")
+    if st.sidebar.button("Export Predicted CSV"):
+        processing_log.text("💾 Exporting predicted CSV file...")
         
-        # Create new LAS file with predictions
-        new_las = lasio.LASFile()
+        # Create CSV from the dataframe with the predictions
+        csv = df.to_csv(index=False)
+        st.sidebar.success(f"✅ File ready for download: `predicted_dtsm.csv`")
         
-        # Copy header information
-        for curve in las.curves:
-            new_las.append_curve(
-                curve.mnemonic,
-                data=curve.data,
-                unit=curve.unit,
-                descr=curve.descr,
-                value=curve.value
-            )
-        
-        # Add new curves (predicted DTSM)
-        new_las.append_curve('DEPTH', df['DEPTH'].values, unit='m')
-        new_las.append_curve('DTSM', df[target].values, unit='us/ft', descr='Measured Shear Sonic')
-        new_las.append_curve('DTSM_PRED', df['DTSM_PRED'].values, unit='us/ft', descr='Predicted Shear Sonic')
-        
-        # Save LAS file temporarily
-        output_file = 'DTSM_PREDICTED.las'
-        new_las.write(output_file)
-        processing_log.text(f"✅ File exported as: `{output_file}`")
-        
-        # Provide download button for the LAS file
-        with open(output_file, 'rb') as f:
-            st.download_button(
-                label="Download Predicted LAS File",
-                data=f,
-                file_name=output_file,
-                mime="application/octet-stream"
-            )
-        st.sidebar.success(f"✅ File exported as: `{output_file}`")
+        # Provide download button for the CSV file
+        st.download_button(
+            label="Download Predicted CSV File",
+            data=csv,
+            file_name='predicted_dtsm.csv',
+            mime='text/csv'
+        )
 
 # Clear processing log if no action is taken
 if not uploaded_file:
