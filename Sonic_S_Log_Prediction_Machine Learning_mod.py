@@ -33,8 +33,15 @@ if uploaded_file:
     try:
         processing_log.text("⏳ Loading LAS file...")
         
-        # Read the file from the uploaded BytesIO object
-        las = lasio.read(io.BytesIO(uploaded_file.read()))  # Wrap in BytesIO to convert the file content to binary
+        # Read the file content from uploaded file
+        las_file_content = uploaded_file.read()
+        
+        # Check if the file content starts with the expected LAS header (~)
+        if not las_file_content.startswith(b'~'):
+            raise ValueError("The uploaded file does not appear to be a valid LAS file.")
+
+        # Read the LAS file using lasio
+        las = lasio.read(io.BytesIO(las_file_content))  # Wrap in BytesIO to convert the file content to binary
         df = las.df().reset_index()
         
         processing_log.text("✅ LAS file loaded successfully!")
@@ -55,7 +62,7 @@ if uploaded_file:
 
     except Exception as e:
         processing_log.text(f"❌ Error loading LAS file: {e}")
-        st.error("Failed to load LAS file. Please check the file format.")
+        st.error(f"Failed to load LAS file. Please check the file format. Error: {e}")
 
 # =============================================
 # 2. MODEL TRAINING & PREDICTION (ACTION BUTTON)
@@ -201,4 +208,5 @@ if st.sidebar.button("Export Predicted LAS"):
 # Clear processing log if no action is taken
 if not uploaded_file:
     processing_log.text("ℹ️ Upload a LAS file to begin processing.")
+
 
